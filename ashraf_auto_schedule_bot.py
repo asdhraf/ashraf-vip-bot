@@ -34,21 +34,16 @@ def send_to_telegram(message):
     try:
         requests.post(url, data=payload)
     except Exception as e:
-        print(f"خطأ أثناء الإرسال: {e}")
+        print(f"❌ خطأ أثناء الإرسال: {e}")
 
 # تحليل سهم مفرد
 def analyze_stock(symbol, now):
     try:
         stock = yf.Ticker(symbol)
-
-        # التحقق من أن السهم غير محذوف (delisted)
-        info = stock.info
-        if 'regularMarketPrice' not in info or info['regularMarketPrice'] is None:
-            return
-
         hist = stock.history(period="7d", interval="1d")
 
-        if hist.empty or len(hist) < 2:
+        # تجاوز الأسهم المحذوفة أو البيانات المفقودة
+        if hist.empty or len(hist) < 2 or 'Close' not in hist or 'Volume' not in hist:
             return
 
         last_close = hist['Close'][-2]
@@ -75,7 +70,7 @@ def analyze_stock(symbol, now):
                 send_to_telegram(message)
 
     except Exception as e:
-        print(f"خطأ أثناء تحليل {symbol}: {e}")
+        print(f"❌ خطأ أثناء تحليل {symbol}: {e}")
 
 # حساب RSI
 def calculate_rsi(close_prices, period=14):
@@ -92,14 +87,7 @@ def calculate_macd_signal(close_prices):
     exp2 = close_prices.ewm(span=26, adjust=False).mean()
     macd = exp1 - exp2
     signal = macd.ewm(span=9, adjust=False).mean()
-    if macd.iloc[-1] > signal.iloc[-1]:
-        return "bullish"
-    else:
-        return "bearish"
-
-# التحقق من الأخبار الإيجابية (مبسط)
-def check_news_sentiment(symbol):
-    return True
+    return "bullish" if macd.iloc[-1] > signal.iloc[-1] else "bearish"
 
 # فحص شامل لكل الأسهم
 def run_analysis():
@@ -110,8 +98,9 @@ def run_analysis():
             for row in reader:
                 symbol = row['Symbol']
                 analyze_stock(symbol, now)
+                time.sleep(1.5)  # مهم جدًا لتفادي الحظر من Yahoo
     except Exception as e:
-        print(f"خطأ عام: {e}")
+        print(f"❌ خطأ عام: {e}")
 
 # إرسال رسالة كل 12 ساعة أن البوت شغال
 def send_alive_message():
@@ -128,7 +117,6 @@ def main():
 
 # تشغيل السكربت
 if __name__ == "__main__":
-    send_to_telegram("🚀 تم تشغيل البوت بنجاح!")
     threading.Thread(target=run_web_server).start()
     threading.Thread(target=send_alive_message).start()
     main()
