@@ -1,44 +1,37 @@
 
+import yfinance as yf
+import requests
+import datetime
+import pytz
+import csv
+import time
+import threading
+from flask import Flask
+import os
 
-def analyze_stock(symbol, now):
-    try:
-        stock = yf.Ticker(symbol)
-        hist = stock.history(period="7d", interval="1d", prepost=True)
-        
-        print(f"\n🔍 تحليل {symbol}:")
-        print(hist.tail(2))  # طباعة آخر يومين من البيانات
-        
-        if hist.empty or len(hist) < 2:
-            print(f"⚠️ لا توجد بيانات كافية لـ {symbol}")
-            return
+# ----- إعدادات البوت -----
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
+CHAT_ID = os.environ.get('CHAT_ID')
+PRICE_LIMIT = 10.0
 
-        last_close = hist.iloc[-2]['Close']
-        current_price = hist.iloc[-1]['Close']
-        volume = hist.iloc[-1]['Volume']
-        prev_high = hist['High'].iloc[:-1].max()
-        
-        print(f"💰 السعر الحالي: {current_price}, الحجم: {volume}, الأعلى السابق: {prev_high}")
-        
-        if current_price < PRICE_LIMIT and current_price > prev_high and volume > 500000:
-            # ---- حساب الأهداف والوقف ----
-            stop_loss = round(current_price * 0.93, 2)
-            target1 = round(current_price * 1.07, 2)
-            target2 = round(current_price * 1.15, 2)
-            
-            # ---- بناء الرسالة ----
-            message = f"""📈 <b>إشارة تداول: {symbol}</b>
-⏰ الوقت: {now}
-💵 السعر الحالي: {current_price:.2f}
-🛑 وقف الخسارة: {stop_loss}
-🎯 الهدف الأول: {target1}
-🎯 الهدف الثاني: {target2}"""
-            
-            # ---- إرسال الرسالة ----
-            send_to_telegram(message)
-            time.sleep(1)  # تأخير بين الإشعارات
-            
-    except Exception as e:
-        print(f"❌ خطأ في {symbol}: {str(e)}")
+riyadh = pytz.timezone('Asia/Riyadh')
+
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return "✅ البوت يعمل!"
+
+def run_web_server():
+    port = int(os.environ.get('PORT', 10000))
+    app.run(host="0.0.0.0", port=port)
+
+# ... (بقية الدوال كما هي)
+
+if __name__ == "__main__":
+    threading.Thread(target=run_web_server, daemon=True).start()
+    threading.Thread(target=send_alive_message, daemon=True).start()
+    main()
 
 
 
