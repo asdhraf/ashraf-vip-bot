@@ -1,6 +1,2 @@
-yfinance
-requests
-pytz
-flask
-pandas
+
 
